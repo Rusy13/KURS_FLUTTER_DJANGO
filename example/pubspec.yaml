@@ -1,0 +1,29 @@
+name: yandex_mapkit_example
+description: Demonstrates how to use the yandex_mapkit plugin.
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: ">=2.12.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  yandex_mapkit: ^3.2.0
+  geolocator: ^9.0.2
+  permission_handler: ^11.0.0
+
+dev_dependencies:
+  flutter_lints: ^2.0.2
+
+flutter:
+  assets:
+    - lib/assets/user.png
+    - lib/assets/cluster.png
+    - lib/assets/place.png
+    - lib/assets/arrow.png
+    - lib/assets/route_start.png
+    - lib/assets/route_stop_by.png
+    - lib/assets/route_end.png
+  uses-material-design: true
