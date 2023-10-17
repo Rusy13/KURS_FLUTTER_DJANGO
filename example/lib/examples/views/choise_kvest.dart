@@ -23,9 +23,10 @@ class RoutesListPage extends StatelessWidget {
               final routeId = route['id'];
               final points = await NetworkManager().getPointsForRoute(routeId);
               print('Точки для маршрута ${route['name']}: $points');
-              Navigator.of(context).pushNamed('/placemark_map_object');
-              // Здесь вы можете выполнить дополнительные действия с точками маршрута
-              // Например, навигацию на другую страницу для отображения точек маршрута.
+              print('Отправляю точки: $points');
+              Navigator.of(context).pushNamed('/placemark_map_object', arguments: points);
+
+
             },
 
           );
