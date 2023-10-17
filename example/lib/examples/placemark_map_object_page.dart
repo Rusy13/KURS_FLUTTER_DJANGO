@@ -4,93 +4,136 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
-import 'package:yandex_mapkit_example/examples/widgets/control_button.dart';
-import 'package:yandex_mapkit_example/examples/widgets/map_page.dart';
+class PlacemarkInfoSheet extends StatefulWidget {
+  final String hint;
+  final String answer;
+  final Function(bool) onAnswer;
 
-class PlacemarkMapObjectPage extends MapPage {
-  final List<Map<String, dynamic>> pointsData;
+  PlacemarkInfoSheet({required this.hint, required this.answer, required this.onAnswer});
 
-  PlacemarkMapObjectPage({Key? key, required this.pointsData}) : super('Выбор квеста1', key: key);
+  @override
+  _PlacemarkInfoSheetState createState() => _PlacemarkInfoSheetState();
+}
+
+class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
+  TextEditingController _answerController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    return _PlacemarkMapObjectExample(pointsData: pointsData);
+    return Container(
+      padding: EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Подсказка: ${widget.hint}'),
+          SizedBox(height: 8.0),
+          TextField(
+            controller: _answerController,
+            decoration: InputDecoration(labelText: 'Введите ответ'),
+          ),
+          SizedBox(height: 8.0),
+          ElevatedButton(
+            onPressed: () {
+              final userAnswer = _answerController.text;
+              if (userAnswer == widget.answer) {
+                widget.onAnswer(true); // Правильный ответ, удаляем маркер
+              } else {
+                widget.onAnswer(false); // Неправильный ответ, ничего не делаем
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('К сожалению, ответ не верный'),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text('OK'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }
+            },
+            child: Text('Проверить ответ'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _PlacemarkMapObjectExample extends StatefulWidget {
+class PlacemarkMapObjectPage extends StatefulWidget {
   final List<Map<String, dynamic>> pointsData;
 
-  _PlacemarkMapObjectExample({required this.pointsData});
+  PlacemarkMapObjectPage({Key? key, required this.pointsData})
+      : super(key: key);
 
   @override
-  _PlacemarkMapObjectExampleState createState() => _PlacemarkMapObjectExampleState();
+  _PlacemarkMapObjectPageState createState() =>
+      _PlacemarkMapObjectPageState();
 }
 
-class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> {
+class _PlacemarkMapObjectPageState
+    extends State<PlacemarkMapObjectPage> {
   final List<MapObject> mapObjects = [];
 
-  final MapObjectId mapObjectWithDynamicIconId = const MapObjectId('dynamic_icon_placemark');
-  final MapObjectId mapObjectWithCompositeIconId = const MapObjectId('composite_icon_placemark');
-
-
-  Future<Uint8List> _rawPlacemarkImage() async {
-    final recorder = PictureRecorder();
-    final canvas = Canvas(recorder);
-    const size = Size(50, 50);
-    final fillPaint = Paint()
-      ..color = Colors.blue[100]!
-      ..style = PaintingStyle.fill;
-    final strokePaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    const radius = 20.0;
-
-    final circleOffset = Offset(size.height / 2, size.width / 2);
-
-    canvas.drawCircle(circleOffset, radius, fillPaint);
-    canvas.drawCircle(circleOffset, radius, strokePaint);
-
-    final image = await recorder.endRecording().toImage(size.width.toInt(), size.height.toInt());
-    final pngBytes = await image.toByteData(format: ImageByteFormat.png);
-
-    return pngBytes!.buffer.asUint8List();
-  }
-
-
-  // Метод для отображения плашки при нажатии на метку
-  void _showPlacemarkInfo(BuildContext context, String name, String description, String hint, String answer) {
+  void _showPlacemarkInfo(BuildContext context, int markerIndex, String name, String description,
+      String hint, String answer) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
-        return Container(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8.0),
-              Text(description),
-              SizedBox(height: 8.0),
-              Text('Подсказка: $hint'),
-              Text('Ответ: $answer'),
-            ],
-          ),
+        return PlacemarkInfoSheet(
+          hint: hint,
+          answer: answer,
+          onAnswer: (isCorrect) {
+            if (isCorrect) {
+              setState(() {
+                mapObjects.removeAt(markerIndex);
+              });
+
+              Navigator.pop(context); // Закрываем плашку при правильном ответе
+
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text('Ответ верный !'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            } else {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text('К сожалению, ответ не верный'),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+          },
         );
       },
     );
-  }
-
-
-
-  @override
-  void initState() {
-    super.initState();
-    _addPlacemarkMapObjectsOnLoad();
   }
 
   Future<void> _addPlacemarkMapObjectsOnLoad() async {
@@ -103,19 +146,12 @@ class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> 
       final hint = pointData['hint'] as String;
       final answer = pointData['answer'] as String;
 
-      print(latitude);
-      print(longitude);
-      print(name);
-      print(description);
-      print(hint);
-      print(answer);
-
-
       final mapObject = PlacemarkMapObject(
         mapId: MapObjectId('placemark_$i'),
         point: Point(latitude: latitude, longitude: longitude),
         onTap: (PlacemarkMapObject self, Point point) {
-            _showPlacemarkInfo(context, name, description, hint, answer);},
+          _showPlacemarkInfo(context, i, name, description, hint, answer);
+        },
         opacity: 0.7,
         direction: 0,
         isDraggable: true,
@@ -123,7 +159,8 @@ class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> 
         onDrag: (_, Point point) => print('Drag at point $point'),
         onDragEnd: (_) => print('Drag end'),
         icon: PlacemarkIcon.single(PlacemarkIconStyle(
-          image: BitmapDescriptor.fromAssetImage('lib/assets/route_end.png'),
+          image: BitmapDescriptor.fromAssetImage(
+              'lib/assets/route_end.png'),
           rotationType: RotationType.rotate,
         )),
         text: PlacemarkText(
@@ -142,8 +179,14 @@ class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> 
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _addPlacemarkMapObjectsOnLoad();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    print('Точки для маршрута: ${widget.pointsData}');
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,11 +201,6 @@ class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> 
           ),
         ),
         const SizedBox(height: 0),
-
-
-
-
-
       ],
     );
   }
