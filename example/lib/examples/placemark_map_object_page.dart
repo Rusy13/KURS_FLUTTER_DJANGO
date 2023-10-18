@@ -3,6 +3,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
+import 'package:yandex_mapkit_example/examples/views/map.dart';
+import 'package:yandex_mapkit_example/examples/widgets/control_button.dart';
 
 class PlacemarkInfoSheet extends StatefulWidget {
   final String hint;
@@ -65,20 +67,33 @@ class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
   }
 }
 
-class PlacemarkMapObjectPage extends StatefulWidget {
+class PlacemarkMapObjectPage extends MapPage {
   final List<Map<String, dynamic>> pointsData;
 
   PlacemarkMapObjectPage({Key? key, required this.pointsData})
       : super(key: key);
 
   @override
-  _PlacemarkMapObjectPageState createState() =>
-      _PlacemarkMapObjectPageState();
+  Widget build(BuildContext context) {
+    return _PlacemarkMapObjectExample(pointsData: pointsData);
+  }
 }
 
-class _PlacemarkMapObjectPageState
-    extends State<PlacemarkMapObjectPage> {
+class _PlacemarkMapObjectExample extends StatefulWidget {
+  final List<Map<String, dynamic>> pointsData;
+
+  _PlacemarkMapObjectExample({required this.pointsData});
+
+  @override
+  _PlacemarkMapObjectExampleState createState() =>
+      _PlacemarkMapObjectExampleState();
+}
+
+class _PlacemarkMapObjectExampleState
+    extends State<_PlacemarkMapObjectExample> {
   final List<MapObject> mapObjects = [];
+  late YandexMapController controller;
+  final animation = const MapAnimation(type: MapAnimationType.smooth, duration: 2.0);
 
   void _showPlacemarkInfo(BuildContext context, int markerIndex, String name, String description,
       String hint, String answer) {
@@ -187,6 +202,11 @@ class _PlacemarkMapObjectPageState
 
   @override
   Widget build(BuildContext context) {
+    final Point _point = Point(
+      latitude: widget.pointsData[0]['latitude'] as double,
+      longitude: widget.pointsData[0]['longitude'] as double,
+    );
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,6 +217,13 @@ class _PlacemarkMapObjectPageState
             height: MediaQuery.of(context).size.height * 0.5,
             child: YandexMap(
               mapObjects: mapObjects,
+              onMapCreated: (YandexMapController c) {
+                controller = c;
+                // Set the initial camera position when the map is created
+                controller.moveCamera(CameraUpdate.newCameraPosition(
+                  CameraPosition(target: _point),
+                ));
+              },
             ),
           ),
         ),

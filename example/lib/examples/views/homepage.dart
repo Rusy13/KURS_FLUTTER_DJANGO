@@ -26,6 +26,7 @@ class HomePage extends StatelessWidget {
                   }
 
                   // После завершения загрузки данных
+                  // Navigator.of(context).pushNamed('/test');
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => RoutesListPage(routes),
                   ));
