@@ -4,14 +4,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'package:yandex_mapkit_example/examples/views/map.dart';
-import 'package:yandex_mapkit_example/examples/widgets/control_button.dart';
 
 class PlacemarkInfoSheet extends StatefulWidget {
+  final String description;
   final String hint;
   final String answer;
   final Function(bool) onAnswer;
 
-  PlacemarkInfoSheet({required this.hint, required this.answer, required this.onAnswer});
+  PlacemarkInfoSheet({
+    required this.description,
+    required this.hint,
+    required this.answer,
+    required this.onAnswer,
+  });
 
   @override
   _PlacemarkInfoSheetState createState() => _PlacemarkInfoSheetState();
@@ -19,6 +24,27 @@ class PlacemarkInfoSheet extends StatefulWidget {
 
 class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
   TextEditingController _answerController = TextEditingController();
+  int incorrectAttempts = 0;
+
+  void _showHint() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Подсказка'),
+          content: Text(widget.hint),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +53,10 @@ class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Подсказка: ${widget.hint}'),
+          Text('Описание: ${widget.description}'),
           SizedBox(height: 8.0),
+          // Text('Попыток: $incorrectAttempts / 3'),
+          // SizedBox(height: 8.0),
           TextField(
             controller: _answerController,
             decoration: InputDecoration(labelText: 'Введите ответ'),
@@ -38,14 +66,13 @@ class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
             onPressed: () {
               final userAnswer = _answerController.text;
               if (userAnswer == widget.answer) {
-                widget.onAnswer(true); // Правильный ответ, удаляем маркер
-              } else {
-                widget.onAnswer(false); // Неправильный ответ, ничего не делаем
+                widget.onAnswer(true); // Correct answer, remove the marker
+                Navigator.pop(context); // Close the bottom sheet on a correct answer
                 showDialog(
                   context: context,
                   builder: (context) {
                     return AlertDialog(
-                      title: Text('К сожалению, ответ не верный'),
+                      title: Text('Ответ верный! Двигайся к следующей локации'),
                       actions: <Widget>[
                         TextButton(
                           onPressed: () {
@@ -57,6 +84,28 @@ class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
                     );
                   },
                 );
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('Попробуй еще'),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text('OK'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+                incorrectAttempts++;
+                if (incorrectAttempts >= 3) {
+                  _showHint();
+                  incorrectAttempts = 0; // Reset the incorrect attempts count
+                }
               }
             },
             child: Text('Проверить ответ'),
@@ -70,8 +119,7 @@ class _PlacemarkInfoSheetState extends State<PlacemarkInfoSheet> {
 class PlacemarkMapObjectPage extends MapPage {
   final List<Map<String, dynamic>> pointsData;
 
-  PlacemarkMapObjectPage({Key? key, required this.pointsData})
-      : super(key: key);
+  PlacemarkMapObjectPage({Key? key, required this.pointsData}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -89,18 +137,17 @@ class _PlacemarkMapObjectExample extends StatefulWidget {
       _PlacemarkMapObjectExampleState();
 }
 
-class _PlacemarkMapObjectExampleState
-    extends State<_PlacemarkMapObjectExample> {
+class _PlacemarkMapObjectExampleState extends State<_PlacemarkMapObjectExample> {
   final List<MapObject> mapObjects = [];
   late YandexMapController controller;
-  final animation = const MapAnimation(type: MapAnimationType.smooth, duration: 2.0);
 
-  void _showPlacemarkInfo(BuildContext context, int markerIndex, String name, String description,
-      String hint, String answer) {
+  void _showPlacemarkInfo(
+      BuildContext context, int markerIndex, String name, String description, String hint, String answer) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
         return PlacemarkInfoSheet(
+          description: description,
           hint: hint,
           answer: answer,
           onAnswer: (isCorrect) {
@@ -108,48 +155,15 @@ class _PlacemarkMapObjectExampleState
               setState(() {
                 mapObjects.removeAt(markerIndex);
               });
-
-              Navigator.pop(context); // Закрываем плашку при правильном ответе
-
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: Text('Ответ верный !'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text('OK'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            } else {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: Text('К сожалению, ответ не верный'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: Text('OK'),
-                      ),
-                    ],
-                  );
-                },
-              );
             }
           },
         );
       },
     );
   }
+
+
+
 
   Future<void> _addPlacemarkMapObjectsOnLoad() async {
     for (var i = 0; i < widget.pointsData.length; i++) {
